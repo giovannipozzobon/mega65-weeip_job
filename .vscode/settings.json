@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "memory.h": "c",
+        "weeip.h": "c",
+        "eth.h": "c",
+        "stdint.h": "c",
+        "dns.h": "c",
+        "task.h": "c",
+        "dhcp.h": "c"
+    }
+}

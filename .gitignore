@@ -1,0 +1,8 @@
+assets/*.h65
+*.map
+*.prg
+content/
+sdcard-files/
+.DS_Store
+*.o
+compile_commands.json

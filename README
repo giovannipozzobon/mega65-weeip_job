@@ -1,0 +1,36 @@
+WeeIP for the MEGA65.
+
+Changes copyright 2020-2022 Paul Gardner-Stephen (paul@m-e-g-a.org)
+
+Includes several example programmes:
+
+haustierbegriff -- A PETSCII Terminal programme for connecting to BBSs
+fetch -- A simple HTTP-protocol file fetcher for the MEGA65
+
+Notes:
+* Uses the MEGA65's 100mbit fast ethernet controller.
+* Generally munged to behave correctly under CC65.
+* Fixed several bugs in the original WeeIP, including a nasty one in checksum calculation.
+* Simple DHCP and DNS clients now included.
+* Work in progress, and not yet usable.
+
+Original copyright notice:
+
+WeeIP - Micro TCP-IP stack for PIC18 microcontrollers
+Current version: 1.0.3
+Copyright (c) 1996-2014 Bruno Basseto (bruno@wise-ware.org)
+
+This software is free and open source. Verify license conditions within the file LICENSE at the project root.
+This software requires a cross compiler and a target environment to be executed. Verify installation issues within the file INSTALL at the project root. 
+
+WeeIP is a simple but complete working transport-network protocol stack for 8-bit microprocessors.
+Its current version supports Microchip PIC18Fx7J60 family of microcontrollers, but it can be easily ported to other architectures.
+
+Some features:
+* Both TCP and UDP protocols supported
+* ARP address resolution incorporated
+* Multiple socket support, both client and server
+* Lightweight, small foot-print code
+* Specially targeted for 8-bit microprocessors
+* Easy to learn API, based on the SOCKET opaque structure
+* Event-driven design pattern makes it easy to integrate with existing applications
