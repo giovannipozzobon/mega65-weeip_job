@@ -34,3 +34,10 @@ Some features:
 * Specially targeted for 8-bit microprocessors
 * Easy to learn API, based on the SOCKET opaque structure
 * Event-driven design pattern makes it easy to integrate with existing applications
+
+
+5/10/2025 - Scott Hutter
+* Modified to build under Calypsi
+* Runs directly in Mega65 mode
+* DOS ccbuild.bat because I dont get along well with makefiles
+* Includes terminal.prg and udptest.prg

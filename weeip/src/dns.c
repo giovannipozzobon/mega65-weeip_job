@@ -174,7 +174,7 @@ unsigned char value=0;
 
 bool_t dns_hostname_to_ip(char *hostname,IPV4 *ip)
 {
-  //  EUI48 mac;
+  EUI48 mac;
   unsigned char next_retry,retries;
 
   // Check if IP address, and if so, parse directly.
@@ -197,17 +197,20 @@ bool_t dns_hostname_to_ip(char *hostname,IPV4 *ip)
   socket_set_callback(dns_reply_handler);
   socket_set_rx_buffer((uint32_t)&dns_buf[0],sizeof dns_buf);
   
+  socket_select(dns_socket);
+  socket_listen(4096);    // DNS client will use UDP/4096 locally
+
+
   // Before we get any further, send an ARP query for the DNS server
   // (or if it isn't on the same network segment, for our gateway.)
   // to prime things.
   // XXX Should not be necessary, as it will happen automatically?
-  //  arp_query(&ip_dnsserver);
-  //  arp_query(&ip_gate);
+   arp_query(&ip_dnsserver);
+   arp_query(&ip_gate);
   // Then wait until we get a reply.
-  //  while((!query_cache(&ip_dnsserver,&mac)) &&(!query_cache(&ip_gate,&mac)) ) {
-  //    task_periodic();     
-  //  }
-  //  printf("ARPed");
+   while((!query_cache(&ip_dnsserver,&mac)) &&(!query_cache(&ip_gate,&mac)) ) {
+     task_periodic();     
+   }
   
   socket_select(dns_socket);
   socket_connect(&ip_dnsserver,53);

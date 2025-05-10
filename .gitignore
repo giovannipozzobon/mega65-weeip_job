@@ -6,3 +6,4 @@ sdcard-files/
 .DS_Store
 *.o
 compile_commands.json
+.vscode/

@@ -68,9 +68,9 @@ byte_t dhcp_reply_handler (byte_t p)
     for(i=0;i<4;i++) ip_local.b[i] = dns_query[0x10+i];
 #ifdef DEBUG_DHCP
 #ifdef __llvm__
-    printf("ip IS %d.%d.%d.%d\n",ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
+    printf("ip IS %d.%d.%d.%d\r",ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
 #else
-    printf("IP is %d.%d.%d.%d\n",ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
+    printf("IP is %d.%d.%d.%d\r",ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
 #endif
 #endif
     
@@ -101,9 +101,9 @@ byte_t dhcp_reply_handler (byte_t p)
 	    for(i=0;i<4;i++) ip_mask.b[i] = dns_query[offset+i];	  
 #ifdef DEBUG_DHCP
 #ifdef __llvm__	    
-	    printf("nETMASK IS %d.%d.%d.%d\n",ip_mask.b[0],ip_mask.b[1],ip_mask.b[2],ip_mask.b[3]);
+	    printf("nETMASK IS %d.%d.%d.%d\r",ip_mask.b[0],ip_mask.b[1],ip_mask.b[2],ip_mask.b[3]);
 #else
-	    printf("Netmask is %d.%d.%d.%d\n",ip_mask.b[0],ip_mask.b[1],ip_mask.b[2],ip_mask.b[3]);
+	    printf("Netmask is %d.%d.%d.%d\r",ip_mask.b[0],ip_mask.b[1],ip_mask.b[2],ip_mask.b[3]);
 #endif
 #endif
 	    break;
@@ -111,9 +111,9 @@ byte_t dhcp_reply_handler (byte_t p)
 	    for(i=0;i<4;i++) ip_gate.b[i] = dns_query[offset+i];	  
 #ifdef DEBUG_DHCP
 #ifdef __llvm__
-	    printf("gATEWAY IS %d.%d.%d.%d\n",ip_gate.b[0],ip_gate.b[1],ip_gate.b[2],ip_gate.b[3]);
+	    printf("gATEWAY IS %d.%d.%d.%d\r",ip_gate.b[0],ip_gate.b[1],ip_gate.b[2],ip_gate.b[3]);
 #else
-	    printf("Gateway is %d.%d.%d.%d\n",ip_gate.b[0],ip_gate.b[1],ip_gate.b[2],ip_gate.b[3]);
+	    printf("Gateway is %d.%d.%d.%d\r",ip_gate.b[0],ip_gate.b[1],ip_gate.b[2],ip_gate.b[3]);
 #endif
 #endif
 	    break;
@@ -121,9 +121,9 @@ byte_t dhcp_reply_handler (byte_t p)
 	    for(i=0;i<4;i++) ip_dnsserver.b[i] = dns_query[offset+i];	  
 #ifdef DEBUG_DHCP
 #ifdef __llvm__
-	    printf("dns SERVER IS %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
+	    printf("dns SERVER IS %d.%d.%d.%d\r",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
 #else
-	    printf("DNS server is %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
+	    printf("DNS server is %d.%d.%d.%d\r",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
 #endif
 #endif
 	    break;
@@ -142,9 +142,9 @@ byte_t dhcp_reply_handler (byte_t p)
       for(i=0;i<4;i++) ip_broadcast.b[i]=(0xff&(0xff^ip_mask.b[i]))|ip_local.b[i];
 #ifdef DEBUG_DHCP
 #ifdef __llvm__
-      printf("bROADCAST IS %d.%d.%d.%d\n",ip_broadcast.b[0],ip_broadcast.b[1],ip_broadcast.b[2],ip_broadcast.b[3]);
+      printf("bROADCAST IS %d.%d.%d.%d\r",ip_broadcast.b[0],ip_broadcast.b[1],ip_broadcast.b[2],ip_broadcast.b[3]);
 #else
-      printf("Broadcast is %d.%d.%d.%d\n",ip_broadcast.b[0],ip_broadcast.b[1],ip_broadcast.b[2],ip_broadcast.b[3]);
+      printf("Broadcast is %d.%d.%d.%d\r",ip_broadcast.b[0],ip_broadcast.b[1],ip_broadcast.b[2],ip_broadcast.b[3]);
 #endif
 #endif      
       // XXX We SHOULD send a packet to acknowledge the offer.
@@ -163,13 +163,17 @@ byte_t dhcp_reply_handler (byte_t p)
       }
 
     } else if (dns_query[0xf2]==0x05) {
+
+      // send an ARP to show up on router
+      arp_query(&ip_local);
+
       // Mark DHCP configuration complete, and free the socket
       dhcp_configured=1;
 #ifdef DEBUG_DHCP
 #ifdef __llvm__
-      printf("dhcp CONFIGURATION COMPLETE.\n");
+      printf("dhcp CONFIGURATION COMPLETE.\r");
 #else
-      printf("DHCP configuration complete.\n");
+      printf("DHCP configuration complete.\r");
 #endif
 #endif
       socket_release(dhcp_socket);
@@ -231,14 +235,18 @@ void dhcp_send_query_or_request(unsigned char requestP)
 
 #ifdef DEBUG_DHCP
 #ifdef __llvm__
-  printf("sENDING dhcp REQUEST...\n");
+  printf("sENDING dhcp REQUEST...\r");
 #else
-  printf("Sending DHCP request...\n");
+  printf("Sending DHCP request...\r");
 #endif
 #endif
   
   socket_select(dhcp_socket);
   for(i=0;i<4;i++) ip_broadcast.b[i]=255;
+
+// ← Add this so we receive replies on port 68!
+socket_listen(68);
+
   socket_connect(&ip_broadcast,67);
   // force local port to 68
   // (reversed byte order for network byte ordering)

@@ -55,6 +55,8 @@ ETH_HEADER eth_header;
  */
 EUI48 mac_local;
 
+void wait_100ms(void);
+
 #define MTU 2048
 unsigned char tx_frame_buf[MTU];
 
@@ -71,10 +73,17 @@ void eth(uint8_t b)
 bool_t
 eth_clear_to_send()
 {
-  if(PEEK(0xD6E0)&0x80) {
-    return TRUE;
-  }
-  return FALSE;
+    // now test that TXRST (bit7) really is set
+    if (PEEK(0xD6E0) & 0x80) {
+        return TRUE;
+    }
+
+    POKE(0xD6E0, PEEK(0xD6E0) | 0x80);
+
+    wait_100ms();
+
+    return (PEEK(0xD6E0) & 0x80) != 0;
+    //return FALSE;
 }
 
 /**
@@ -299,6 +308,8 @@ void eth_packet_send(void)
   unsigned char j;
   struct m65_tm tm;
 
+  
+
   // Set packet length
   mega65_io_enable();
   POKE(0xD6E2,eth_tx_len&0xff);
@@ -329,7 +340,7 @@ void eth_packet_send(void)
   
   // Make sure ethernet is not under reset
   POKE(0xD6E0,0x03);
-  
+    
   // Send packet
   POKE(0xD6E4,0x01); // TX now
 }

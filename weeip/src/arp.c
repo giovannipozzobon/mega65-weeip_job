@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "../include/task.h"
 #include "../include/weeip.h"
@@ -40,10 +41,6 @@
  * THE SOFTWARE.
  ********************************************************************************
  ********************************************************************************/
-
-#include <string.h>
-#include "../include/weeip.h"
-#include "../include/eth.h"
 
 /*
  * Opcodes.

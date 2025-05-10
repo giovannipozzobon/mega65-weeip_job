@@ -181,13 +181,17 @@ socket_connect
    /*
     * Check socket availability.
     */
-   if(_sckt == NULL) return FALSE;
+   if(_sckt == NULL)
+      return FALSE;
+
    if((_sckt->type == SOCKET_TCP) 
-      && (_sckt->state != _IDLE)) return FALSE;
-   
+      && (_sckt->state != _IDLE)) 
+         return FALSE;
+
    /*
     * Select a local port number.
     */
+   
    _sckt->port = HTONS(port_used);
    if(port_used == PORT_MAX) port_used = PORT_MIN;
    else port_used++;
@@ -208,6 +212,7 @@ socket_connect
     * TCP socket.
     * Force sending SYN message.
     */
+   //puts("c.socket");
    _sckt->state = _SYN_SENT;
    _sckt->toSend = SYN;
    _sckt->retry = RETRIES_TCP;
