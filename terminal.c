@@ -22,7 +22,7 @@ unsigned long byte_log=0;
 #define ETH_FRAMECOUNT        0xD7FA
 
 SOCKET *s;
-byte_t rxbuf[20];
+byte_t rxbuf[255];
 byte_t txbuf[1] = { 0 };
 bool_t isconnected = FALSE;								  
 
