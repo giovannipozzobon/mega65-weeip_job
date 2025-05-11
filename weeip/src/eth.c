@@ -22,6 +22,15 @@
 #include "../../mega65/include/debug.h"
 #include "../../mega65/include/time.h"
 
+#define MEGA65_ETH_CTRL1        0xD6E0
+#define MEGA65_ETH_CTRL2        0xD6E1
+#define MEGA65_ETH_TXSIZE_LSB   0xD6E2
+#define MEGA65_ETH_TXSIZE_MSB   0xD6E3
+#define MEGA65_ETH_COMMAND      0xD6E4
+#define MEGA65_ETH_CTRL3        0xD6E5
+
+#define MEGA65_VICII_RSTR_CMP   0xD012
+
 #define _PROMISCUOUS
 
 // #define NOCRCCHECK
@@ -74,15 +83,15 @@ bool_t
 eth_clear_to_send()
 {
     // now test that TXRST (bit7) really is set
-    if (PEEK(0xD6E0) & 0x80) {
+    if (PEEK(MEGA65_ETH_CTRL1) & 0x80) {
         return TRUE;
     }
 
-    POKE(0xD6E0, PEEK(0xD6E0) | 0x80);
+    POKE(MEGA65_ETH_CTRL1, PEEK(MEGA65_ETH_CTRL1) | 0x80);
 
     wait_100ms();
 
-    return (PEEK(0xD6E0) & 0x80) != 0;
+    return (PEEK(MEGA65_ETH_CTRL1) & 0x80) != 0;
     //return FALSE;
 }
 
@@ -118,7 +127,7 @@ void eth_process_frame(void)
   unsigned char eth_side=(j>>2)&3;
 
   // Acknowledge the ethernet frame, freeing the buffer up for next RX
-  POKE(0xD6E1,0x01); POKE(0xD6E1,0x03);
+  POKE(MEGA65_ETH_CTRL2,0x01); POKE(MEGA65_ETH_CTRL2,0x03);
 
   //  printf("/");
   
@@ -144,7 +153,7 @@ void eth_process_frame(void)
   if (eth_log_mode&ETH_LOG_RX) {
     getrtc(&tm);
     debug_msg("");
-    snprintf(dbg_msg,80,"%02d:%02d:%02d/%d eth rx\n",tm.tm_hour,tm.tm_min,tm.tm_sec,PEEK(0xD012));
+    snprintf(dbg_msg,80,"%02d:%02d:%02d/%d eth rx\n",tm.tm_hour,tm.tm_min,tm.tm_sec,PEEK(MEGA65_VICII_RSTR_CMP));
     debug_msg(dbg_msg);
     for(i=0;i<2048;i+=16) {
       lcopy(ETH_RX_BUFFER+i,(unsigned long)sixteenbytes,16);
@@ -275,7 +284,7 @@ uint8_t eth_task (unsigned char p)
   uint8_t delay=0;
 
   // Process multiple ethernet frames at a time
-  while((PEEK(0xD6E1)&0x20)) {
+  while((PEEK(MEGA65_ETH_CTRL2)&0x20)) {
     //    printf("[%d]",frames);
     eth_process_frame();
     frames++;
@@ -283,7 +292,7 @@ uint8_t eth_task (unsigned char p)
   }
   
   // Check the RXIRQ flag to see if we have frames waiting or not
-  if(!(PEEK(0xD6E1)&0x20)) {
+  if(!(PEEK(MEGA65_ETH_CTRL2)&0x20)) {
     delay = 10;
   }
   task_add(eth_task, delay, 0, "ethtask");
@@ -312,8 +321,8 @@ void eth_packet_send(void)
 
   // Set packet length
   mega65_io_enable();
-  POKE(0xD6E2,eth_tx_len&0xff);
-  POKE(0xD6E3,eth_tx_len>>8);
+  POKE(MEGA65_ETH_TXSIZE_LSB,eth_tx_len&0xff);
+  POKE(MEGA65_ETH_TXSIZE_MSB,eth_tx_len>>8);
 
   // Copy our working frame buffer to 
   lcopy((unsigned long)tx_frame_buf,ETH_TX_BUFFER,eth_tx_len);
@@ -321,7 +330,7 @@ void eth_packet_send(void)
   if (eth_log_mode&ETH_LOG_TX) {
     getrtc(&tm);
     debug_msg("");
-    snprintf(dbg_msg,80,"%02d:%02d:%02d/%d eth tx\n",tm.tm_hour,tm.tm_min,tm.tm_sec,PEEK(0xD012));
+    snprintf(dbg_msg,80,"%02d:%02d:%02d/%d eth tx\n",tm.tm_hour,tm.tm_min,tm.tm_sec,PEEK(MEGA65_VICII_RSTR_CMP));
     debug_msg(dbg_msg);
     for(i=0;i<eth_tx_len;i+=16) {
       snprintf(dbg_msg,80,"  %04x : ",i);
@@ -339,10 +348,10 @@ void eth_packet_send(void)
 #endif
   
   // Make sure ethernet is not under reset
-  POKE(0xD6E0,0x03);
+  POKE(MEGA65_ETH_CTRL1,0x03);
     
   // Send packet
-  POKE(0xD6E4,0x01); // TX now
+  POKE(MEGA65_ETH_COMMAND,0x01); // TX now
 }
 
 
@@ -407,7 +416,7 @@ void
 eth_arp_send
    (EUI48 *mac)
 {
-  if(!(PEEK(0xD6E0)&0x80)) return;                     // another transmission in progress.
+  if(!(PEEK(MEGA65_ETH_CTRL1)&0x80)) return;                     // another transmission in progress.
    
    eth_tx_len=0;
 
@@ -433,8 +442,8 @@ void wait_100ms(void)
   int c = 1600;
   unsigned char b;
   while (c--) {
-    b = PEEK(0xD012U);
-    while (b == PEEK(0xD012U))
+    b = PEEK(MEGA65_VICII_RSTR_CMP);
+    while (b == PEEK(MEGA65_VICII_RSTR_CMP))
       continue;
   }
 }
@@ -452,22 +461,22 @@ eth_init()
     * Setup frame reception filter.
     */
 #if defined(_PROMISCUOUS)
-   POKE(0xD6E5,PEEK(0xD6E5)&0xFE);
+   POKE(MEGA65_ETH_CTRL3,PEEK(MEGA65_ETH_CTRL3)&0xFE);
 #else
-   POKE(0xD6E5,PEEK(0xD6E5)|0x01);
+   POKE(MEGA65_ETH_CTRL3,PEEK(MEGA65_ETH_CTRL3)|0x01);
 #endif
 #ifdef NOCRCCHECK
-   POKE(0xD6E5,PEEK(0xD6E5)|0x02);
+   POKE(MEGA65_ETH_CTRL3,PEEK(MEGA65_ETH_CTRL3)|0x02);
 #else
-   POKE(0xD6E5,PEEK(0xD6E5)&0xfd);
+   POKE(MEGA65_ETH_CTRL3,PEEK(MEGA65_ETH_CTRL3)&0xfd);
 #endif
 
 
    // Set ETH TX Phase to 1
-   POKE(0xD6E5,(PEEK(0xD6E5)&0xf3)|(1<<2));   
+   POKE(MEGA65_ETH_CTRL3,(PEEK(MEGA65_ETH_CTRL3)&0xf3)|(1<<2));   
 
    // Set ETH RX Phase delay to 1
-   POKE(0xD6E5,(PEEK(0xD6E5)&0x3f)|(1<<6));   
+   POKE(MEGA65_ETH_CTRL3,(PEEK(MEGA65_ETH_CTRL3)&0x3f)|(1<<6));   
    
    /*
     * Read MAC address from ETH controller
@@ -479,12 +488,12 @@ eth_init()
       writing 3 should be sufficient.
       But my experimentation suggests that 100ms for each is required instead.
     */
-   POKE(0xd6e0,0);
+   POKE(MEGA65_ETH_CTRL1,0);
    wait_100ms();
-   POKE(0xd6e0,3);
+   POKE(MEGA65_ETH_CTRL1,3);
    wait_100ms();
-   POKE(0xd6e1,3);
-   POKE(0xd6e1,0);
+   POKE(MEGA65_ETH_CTRL2,3);
+   POKE(MEGA65_ETH_CTRL2,0);
    // wait four seconds to allow PHY to come up again
    while (timer--)
      wait_100ms();
