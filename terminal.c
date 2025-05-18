@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "./weeip/include/task.h"
 #include "./weeip/include/weeip.h"
@@ -11,6 +12,7 @@
 
 #include "./mega65/include/memory.h"
 #include "./mega65/include/random.h"
+#include "terminal.h"
 
 unsigned char last_frame_number=0;
 unsigned long byte_log=0;
@@ -32,9 +34,12 @@ void term_network_init();
 byte_t term_get_host(char *buf, size_t maxlen);
 byte_t term_get_port(uint16_t *out_port);
 byte_t term_event_callback (byte_t p);
+byte_t term_is_valid_ipv4(const char *ip, IPV4 *out_ip);
+
 
 void main(void)
 {
+  IPV4 tmp_host;
   IPV4 remote_host;
   EUI48 mac;
   uint16_t port_number=PORT_NUMBER;
@@ -50,62 +55,70 @@ void main(void)
 
     if (valid == TRUE) {
 
-      if (!dns_hostname_to_ip(hostname,&remote_host)) {
+      byte_t ip_host = term_is_valid_ipv4(hostname, &tmp_host); 
+
+      if(ip_host == TRUE)
+      {
+        remote_host.b[0] = tmp_host.b[0];
+        remote_host.b[1] = tmp_host.b[1];
+        remote_host.b[2] = tmp_host.b[2];
+        remote_host.b[3] = tmp_host.b[3];
+      }
+
+      if (ip_host == FALSE && (!dns_hostname_to_ip(hostname,&remote_host)) ) {
         printf("\rcould not resolve hostname '%s'",hostname);
-        getchar();
+        continue;
       }
-      else {
-        printf("\r\rconnecting to: %s:%u (%d.%d.%d.%d)...", hostname, port_number, 
-          remote_host.b[0],remote_host.b[1],remote_host.b[2],remote_host.b[3]);
 
-        EUI48 tmp_mac;
-        arp_query(&remote_host);
-        uint16_t t = 500;                        // 500 ms-ish
-        while (!query_cache(&remote_host, &tmp_mac) && t--) {
-          task_periodic();
-        }
-         
-        s = socket_create(SOCKET_TCP); 
-        socket_select(s);
-        socket_set_callback(term_event_callback);
-        socket_set_rx_buffer((uint32_t)rxbuf, sizeof(rxbuf));
-        socket_connect(&remote_host,port_number);
+      printf("\r\rconnecting to: %s:%u (%d.%d.%d.%d)...", hostname, port_number, 
+        remote_host.b[0],remote_host.b[1],remote_host.b[2],remote_host.b[3]);
+
+      EUI48 tmp_mac;
+      arp_query(&remote_host);
+      uint16_t t = 500;                        // 500 ms-ish
+      while (!query_cache(&remote_host, &tmp_mac) && t--) {
         task_periodic();
-      
-        // assumption, but needed to allow time for actual connection
-        // attempt to connect should timeout if not (?)
-        isconnected = TRUE;
-
-        do { 
-          task_periodic();
-          
-          // only call it periodically
-          uint8_t fc = PEEK(ETH_FRAMECOUNT);
-          if (fc != last_frame_number) {
-              last_frame_number = fc;
-              //task_periodic();                            // runs eth_task() right away
-          }
-      
-          if(PEEK(M65_KEYBOARD))
-          {
-            uint8_t key = PEEK(M65_KEYBOARD);
-            
-            if(key != 0x00 && key != 0xff) {
-              
-              POKE(M65_KEYBOARD, 0);
-      
-              txbuf[0] = key;
-              //printf("%c",key);
-      
-              socket_select(s);
-              while (!socket_send(txbuf, sizeof(txbuf)))  // wait until there’s room
-                task_periodic();                          // let ACK for previous byte arrive
-            }
-          }
-
-        } while (isconnected == TRUE);
-
       }
+        
+      s = socket_create(SOCKET_TCP); 
+      socket_select(s);
+      socket_set_callback(term_event_callback);
+      socket_set_rx_buffer((uint32_t)rxbuf, sizeof(rxbuf));
+      socket_connect(&remote_host,port_number);
+      task_periodic();
+    
+      // assumption, but needed to allow time for actual connection
+      // attempt to connect should timeout if not (?)
+      isconnected = TRUE;
+
+      do { 
+        task_periodic();
+        
+        // only call it periodically
+        uint8_t fc = PEEK(ETH_FRAMECOUNT);
+        if (fc != last_frame_number) {
+            last_frame_number = fc;
+            //task_periodic();                            // runs eth_task() right away
+        }
+    
+        if(PEEK(M65_KEYBOARD))
+        {
+          uint8_t key = PEEK(M65_KEYBOARD);
+          
+          if(key != 0x00 && key != 0xff) {
+            
+            POKE(M65_KEYBOARD, 0);
+    
+            txbuf[0] = key;
+            //printf("%c",key);
+    
+            socket_select(s);
+            while (!socket_send(txbuf, sizeof(txbuf)))  // wait until there’s room
+              task_periodic();                          // let ACK for previous byte arrive
+          }
+        }
+
+      } while (isconnected == TRUE);
     }
   }
 }
@@ -211,9 +224,45 @@ byte_t term_event_callback (byte_t b)
   return 0;
 }
 
+byte_t term_is_valid_ipv4(const char *ip, IPV4 *out_ip) {
+
+  if (!ip || !out_ip) return 0;
+
+  byte_t octets[4];
+  int i = 0;
+
+  while (i < 4) {
+      if (!isdigit(*ip)) return 0;
+
+      char *end;
+      long val = my_strtol(ip, &end, 10);
+      if (val < 0 || val > 255) return 0;
+
+      // Disallow leading zeros (e.g. "01")
+      if ((end - ip) > 1 && *ip == '0') return 0;
+
+      octets[i++] = (byte_t)val;
+
+      if (i < 4) {
+          if (*end != '.') return 0;
+          ip = end + 1;
+      } else {
+          if (*end != '\0') return 0;
+      }
+  }
+
+  // If we made it this far, it's valid
+  out_ip->b[0] = octets[0];
+  out_ip->b[1] = octets[1];
+  out_ip->b[2] = octets[2];
+  out_ip->b[3] = octets[3];
+  return 1;
+
+}
+
 byte_t term_get_host(char *buf, size_t maxlen)
 {
-    printf("\r - enter remote hostname: ");
+    printf("\r - enter remote hostname or ip: ");
 
     /* fgets reads at most maxlen-1 bytes plus the '\0' */
     if (!fgets(buf, (int)maxlen, stdin))
@@ -223,6 +272,10 @@ byte_t term_get_host(char *buf, size_t maxlen)
     size_t len = strlen(buf);
     if (len && buf[len-1] == '\n')
         buf[len-1] = '\0';
+
+    uint8_t pcount=0;
+    for(uint8_t x=0; x < len-1;x++)
+      if(buf[x] =='.') pcount++;
 
     return TRUE;
 }
