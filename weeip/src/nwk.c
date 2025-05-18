@@ -159,6 +159,14 @@
      if (_sckt -> type != SOCKET_TCP) continue; // UDP socket or unused.
      if(_sckt->time == 0) continue;                        // does not have timing requirements.
  
+     if (_sckt->rx_data == 0 && _sckt->state == _CONNECT && !_sckt->timeout) {
+      _sckt->toSend = ACK;
+      _sckt->timeout = TRUE;
+      task_cancel(nwk_upstream);
+      task_add(nwk_upstream, 0, 0, "upstream");
+      continue;
+    }
+
      /*
       * Do socket timing.
       */
