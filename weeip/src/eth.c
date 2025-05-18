@@ -28,6 +28,7 @@
 #define MEGA65_ETH_TXSIZE_MSB   0xD6E3
 #define MEGA65_ETH_COMMAND      0xD6E4
 #define MEGA65_ETH_CTRL3        0xD6E5
+#define MEGA65_ETH_DEBUG        0xD6EF
 
 #define MEGA65_VICII_RSTR_CMP   0xD012
 
@@ -120,7 +121,7 @@ uint16_t frame_count=0;
 void eth_process_frame(void)
 {  
   unsigned short i;
-  unsigned char j=PEEK(0xD6EF);
+  unsigned char j=PEEK(MEGA65_ETH_DEBUG);
   struct m65_tm tm;
  
   unsigned char cpu_side=j&3;
